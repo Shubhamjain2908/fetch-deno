@@ -54,4 +54,8 @@ async function downloadLaunchData() {
   }
 }
 
-await downloadLaunchData();
+if (import.meta.main) {
+  await downloadLaunchData();
+
+  log.info(`Downloaded data for ${launches.size} SpaceX launches.`);
+}
