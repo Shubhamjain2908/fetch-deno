@@ -12,22 +12,46 @@ await log.setup({
   },
 });
 
+interface Launch {
+  flightNumber: number;
+  mission: string;
+  rocket: string;
+  customers: string[];
+}
+
+const launches = new Map<number, Launch>();
+
 async function downloadLaunchData() {
-  log.info("Downloading launch data...");
-  const response = await fetch(
-    "https://api.spacexdata.com/v3/launches/latest",
-    {
-      method: "GET",
-    },
-  );
+  const response = await fetch("https://api.spacexdata.com/v3/launches");
 
   if (!response.ok) {
-    log.warning("Problem downloading launch data.");
-    throw new Error("Launch data download failed");
+    return log.warning("Failed to fetch SpaceX launches");
   }
 
   const launchData = await response.json();
-  console.log(launchData);
+
+  log.info("Downloading launch data...");
+  launches.clear();
+
+  for (const launch of launchData) {
+    const customers = launch["rocket"]["second_stage"]["payloads"].reduce(
+      (acc: string[], curr: any) => {
+        return acc.concat(curr["customers"]);
+      },
+      [],
+    );
+
+    const flightData = {
+      flightNumber: launch["flight_number"],
+      mission: launch["mission_name"],
+      rocket: launch["rocket"]["rocket_name"],
+      customers,
+    };
+
+    log.info(JSON.stringify(flightData));
+
+    launches.set(flightData.flightNumber, flightData);
+  }
 }
 
-downloadLaunchData();
+await downloadLaunchData();
