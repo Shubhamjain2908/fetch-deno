@@ -1,45 +1,32 @@
 import * as log from "https://deno.land/std/log/mod.ts";
-
-await log.setup({
-  handlers: {
-    console: new log.handlers.ConsoleHandler("DEBUG"),
-  },
-  loggers: {
-    default: {
-      level: "DEBUG",
-      handlers: ["console", "file"],
-    },
-  },
-});
+import * as _ from "https://deno.land/x/lodash@4.17.15-es/lodash.js";
 
 interface Launch {
   flightNumber: number;
   mission: string;
   rocket: string;
-  customers: string[];
+  customers: Array<string>;
 }
 
 const launches = new Map<number, Launch>();
 
 async function downloadLaunchData() {
+  log.info("Downloading launch data...");
   const response = await fetch("https://api.spacexdata.com/v3/launches");
 
   if (!response.ok) {
-    return log.warning("Failed to fetch SpaceX launches");
+    log.warning("Failed to fetch SpaceX launches");
+    throw new Error("Launch data download failed.");
   }
 
   const launchData = await response.json();
 
-  log.info("Downloading launch data...");
-  launches.clear();
-
   for (const launch of launchData) {
-    const customers = launch["rocket"]["second_stage"]["payloads"].reduce(
-      (acc: string[], curr: any) => {
-        return acc.concat(curr["customers"]);
-      },
-      [],
-    );
+    const payloads = launch["rocket"]["second_stage"]["payloads"];
+
+    const customers = _.flatMap(payloads, (payload: any) => {
+      return payload["customers"];
+    });
 
     const flightData = {
       flightNumber: launch["flight_number"],
@@ -48,7 +35,7 @@ async function downloadLaunchData() {
       customers,
     };
 
-    log.info(JSON.stringify(flightData));
+    log.info(JSON.stringify(flightData, null, 2));
 
     launches.set(flightData.flightNumber, flightData);
   }
